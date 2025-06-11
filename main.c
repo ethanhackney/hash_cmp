@@ -15,5 +15,8 @@ main(void)
         if (i2imap == NULL)
                 puts("here");
 
+        if (int2intmap_resize(&i2imap, i2imap->p_cap << 1) < 0)
+                puts("here");
+
         int2intmap_free(&i2imap);
 }

@@ -83,6 +83,8 @@ _name ## _new(hash_map_size_t cap)                                      \
                 goto free_key;                                          \
                                                                         \
         pp->p_cap = cap;                                                \
+        pp->p_len = 0;                                                  \
+        pp->p_was = 0;                                                  \
         goto ret;                                                       \
                                                                         \
 free_key:                                                               \
