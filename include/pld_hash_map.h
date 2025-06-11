@@ -67,8 +67,8 @@ _name ## _new(hash_map_size_t cap)                                      \
                                                                         \
         if (cap == 0)                                                   \
                 cap = PLD_HASH_MAP_INIT_CAP;                            \
-        else                                                            \
-                cap = next_pow2(cap);                                   \
+                                                                        \
+        cap = next_pow2(cap);                                           \
                                                                         \
         msize = sizeof(*pp->p_meta) * cap;                              \
         pp->p_meta = malloc(msize);                                     \
