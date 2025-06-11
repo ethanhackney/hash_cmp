@@ -22,8 +22,8 @@ inthash(int i)
 
 PLD_HASH_MAP_DEFINE(int, int, int2intmap, inthash, intcmp)
 
-static int key[1 << 20] = {0};
-static int val[1 << 20] = {0};
+static int key[1 << 24] = {0};
+static int val[1 << 24] = {0};
 
 int
 main(void)
