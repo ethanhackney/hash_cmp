@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 /* initial capacity of pld_hash_map */
 #ifndef PLD_HASH_MAP_INIT_CAP

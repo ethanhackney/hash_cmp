@@ -1,7 +1,8 @@
-#define PLD_HASH_MAP_INIT_CAP 1
 #include "include/pld_hash_map.h"
 #include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <time.h>
 
 static inline hash_map_size_t
 inthash(int i)
@@ -24,34 +25,44 @@ PLD_HASH_MAP_DEFINE(int, int, int2intmap, inthash, intcmp)
 int
 main(void)
 {
-        int log2[] = {
-                -1, /* nil */
-                 0, /* 1 */
-                 1, /* 2 */
-                 2, /* 4 */
-                 3, /* 8 */
-                 4, /* 16 */
-                -1, /* nil */
-        };
         struct int2intmap *i2imap = NULL;
+        clock_t start = 0;
+        int key[1 << 14] = {0};
+        int val[1 << 14] = {0};
+        int nkey = sizeof(key) / sizeof(*key);
         int *vp = NULL;
         int i = 0;
 
         i2imap = int2intmap_new(0);
-        if (i2imap == NULL)
-                puts("here");
+        assert(i2imap != NULL);
 
-        for (i = 1; log2[i] >= 0; i++)
-                assert(int2intmap_set(&i2imap, i, log2[i]) == 0);
+        srand((unsigned int)time(NULL));
 
-        for (i = 1; log2[i] >= 0; i++) {
-                vp = int2intmap_get(i2imap, i);
-                assert(vp != NULL);
-                assert(*vp == log2[i]);
+        for (i = 0; i < nkey; i++) {
+                key[i] = rand();
+                val[i] = rand();
         }
 
-        for (i = 1; log2[i] >= 0; i++)
-                assert(int2intmap_unset(&i2imap, i) == 0);
+        start = clock();
+
+        for (i = 0; i < nkey; i++) {
+                vp = int2intmap_get(i2imap, key[i]);
+                if (vp != NULL)
+                        continue;
+
+                assert(int2intmap_set(&i2imap, key[i], val[i]) == 0);
+                vp = int2intmap_get(i2imap, key[i]);
+                assert(vp != NULL);
+                assert(*vp == val[i]);
+        }
+
+        for (i = 0; i < nkey; i++) {
+                vp = int2intmap_get(i2imap, key[i]);
+                if (vp != NULL)
+                        assert(int2intmap_unset(&i2imap, key[i]) == 0);
+        }
+
+        printf("%lf\n", ((double)clock() - (double)start) / CLOCKS_PER_SEC);
 
         int2intmap_free(&i2imap);
 }
