@@ -167,18 +167,20 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
         hash_map_size_t mask = 0;                                       \
         hash_map_size_t j = 0;                                          \
         hash_map_size_t i = 0;                                          \
+        hash_map_size_t tmp_hash = 0;                                   \
+        hash_map_size_t hash = 0;                                       \
         uint8_t tmp_disp = 0;                                           \
         uint8_t disp = 0;                                               \
-        _k tmp_k = (_k){0};                                             \
-        _k k = (_k){0};                                                 \
-        _v tmp_v = (_v){0};                                             \
-        _v v = (_v){0};                                                 \
+        _k tmp_k;                                                       \
+        _k k;                                                           \
+        _v tmp_v;                                                       \
+        _v v;                                                           \
                                                                         \
         if (newpp == NULL)                                              \
                 return -1;                                              \
                                                                         \
         newpp->p_len = pp->p_len;                                       \
-        newpp->p_was = pp->p_was;                                       \
+        newpp->p_was = 0;                                               \
         mask = newpp->p_cap - 1;                                        \
                                                                         \
         for (i = 0; moved < pp->p_len; i++) {                           \
@@ -187,27 +189,36 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
                                                                         \
                 k = pp->p_key[i];                                       \
                 v = pp->p_val[i];                                       \
+                hash = pp->p_hash[i];                                   \
                 disp = 0;                                               \
-                j = pp->p_hash[i] & mask;                               \
+                j = hash & mask;                                        \
                 while (newpp->p_meta[j] != PLD_HASH_MAP_NEVER) {        \
                         if (newpp->p_meta[j] < disp) {                  \
                                 tmp_k = newpp->p_key[j];                \
                                 tmp_v = newpp->p_val[j];                \
                                 tmp_disp = newpp->p_meta[j];            \
+                                tmp_hash = newpp->p_hash[j];            \
                                                                         \
                                 newpp->p_key[j] = k;                    \
                                 newpp->p_val[j] = v;                    \
                                 newpp->p_meta[j] = disp;                \
+                                newpp->p_hash[j] = hash;                \
                                                                         \
                                 k = tmp_k;                              \
                                 v = tmp_v;                              \
+                                hash = tmp_hash;                        \
                                 disp = tmp_disp;                        \
                         }                                               \
                         j = (j + 1) & mask;                             \
                         disp++;                                         \
+                        if (unlikely(disp >= PLD_HASH_MAP_WAS)) {       \
+                                puts("here"); \
+                                _name ## _free(&newpp);                 \
+                                return -1;                              \
+                        }                                               \
                 }                                                       \
                                                                         \
-                newpp->p_hash[j] = pp->p_hash[i];                       \
+                newpp->p_hash[j] = hash;                                \
                 newpp->p_key[j] = k;                                    \
                 newpp->p_val[j] = v;                                    \
                 newpp->p_meta[j] = disp;                                \
@@ -258,6 +269,7 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
         hash_map_size_t hash = _hash(k);                                \
         hash_map_size_t mask = pp->p_cap - 1;                           \
         hash_map_size_t i = hash & mask;                                \
+        hash_map_size_t tmp_hash = 0;                                   \
         uint8_t tmp_disp = 0;                                           \
         uint8_t disp = 0;                                               \
         _k tmp_k = (_k){0};                                             \
@@ -296,13 +308,16 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
                 if (tmp_disp < disp) {                                  \
                         tmp_k = pp->p_key[i];                           \
                         tmp_v = pp->p_val[i];                           \
+                        tmp_hash = pp->p_hash[i];                       \
                                                                         \
                         pp->p_key[i] = k;                               \
                         pp->p_val[i] = v;                               \
                         pp->p_meta[i] = disp;                           \
+                        pp->p_hash[i] = hash;                           \
                                                                         \
                         k = tmp_k;                                      \
                         v = tmp_v;                                      \
+                        hash = tmp_hash;                                \
                         disp = tmp_disp;                                \
                 }                                                       \
                                                                         \
@@ -325,7 +340,7 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
  *  @failure: NULL                                                      \
  */                                                                     \
 static inline _v *                                                      \
-_name ## _get(struct _name *pp, _k k)                                   \
+_name ## _get(const struct _name *pp, _k k)                             \
 {                                                                       \
         hash_map_size_t hash = _hash(k);                                \
         hash_map_size_t mask = pp->p_cap - 1;                           \
@@ -338,6 +353,7 @@ _name ## _get(struct _name *pp, _k k)                                   \
                                                                         \
                 if (cur_disp == PLD_HASH_MAP_NEVER)                     \
                         return NULL;                                    \
+                                                                        \
                 if (cur_disp < disp)                                    \
                         return NULL;                                    \
                                                                         \
@@ -369,7 +385,7 @@ _name ## _need_to_shrink(const struct _name *pp)                        \
         hash_map_size_t len = pp->p_len;                                \
         hash_map_size_t cap = pp->p_cap;                                \
                                                                         \
-        return len <= (cap >> 1) && (cap > PLD_HASH_MAP_INIT_CAP);      \
+        return (len < (cap >> 2)) && (cap > PLD_HASH_MAP_INIT_CAP);     \
 }                                                                       \
                                                                         \
 /**                                                                     \

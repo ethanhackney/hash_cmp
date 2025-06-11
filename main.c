@@ -22,13 +22,14 @@ inthash(int i)
 
 PLD_HASH_MAP_DEFINE(int, int, int2intmap, inthash, intcmp)
 
+static int key[1 << 20] = {0};
+static int val[1 << 20] = {0};
+
 int
 main(void)
 {
         struct int2intmap *i2imap = NULL;
         clock_t start = 0;
-        int key[1 << 14] = {0};
-        int val[1 << 14] = {0};
         int nkey = sizeof(key) / sizeof(*key);
         int *vp = NULL;
         int i = 0;
@@ -46,10 +47,6 @@ main(void)
         start = clock();
 
         for (i = 0; i < nkey; i++) {
-                vp = int2intmap_get(i2imap, key[i]);
-                if (vp != NULL)
-                        continue;
-
                 assert(int2intmap_set(&i2imap, key[i], val[i]) == 0);
                 vp = int2intmap_get(i2imap, key[i]);
                 assert(vp != NULL);
