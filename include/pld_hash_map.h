@@ -5,11 +5,17 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 /* initial capacity of pld_hash_map */
 #ifndef PLD_HASH_MAP_INIT_CAP
 #define PLD_HASH_MAP_INIT_CAP 32
 #endif /* #ifndef PLD_HASH_MAP_INIT_CAP */
+
+/* misc. constants */
+enum {
+        PLD_HASH_MAP_LOAD_FACTOR = 12, /* load factor */
+};
 
 /* slot metadata */
 enum {
@@ -208,6 +214,97 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
         _name ## _free(ppp);                                            \
         *ppp = newpp;                                                   \
         return 0;                                                       \
+}                                                                       \
+                                                                        \
+/**                                                                     \
+ * Test if rehash is needed:                                            \
+ *                                                                      \
+ * Arguments:                                                           \
+ *  @pp: pointer to _name{}                                             \
+ *                                                                      \
+ * Returns:                                                             \
+ *  @true:  if needed                                                   \
+ *  @false: if not                                                      \
+ */                                                                     \
+static inline bool                                                      \
+_name ## _need_to_grow(const struct _name *pp)                          \
+{                                                                       \
+        hash_map_size_t len = pp->p_len;                                \
+        hash_map_size_t cap = pp->p_cap;                                \
+        hash_map_size_t was = pp->p_was;                                \
+                                                                        \
+        return ((len + was) << 4) > (cap * PLD_HASH_MAP_LOAD_FACTOR);   \
+}                                                                       \
+                                                                        \
+/**                                                                     \
+ * Set map[k] to v _name{}:                                             \
+ *                                                                      \
+ * Arguments:                                                           \
+ *  @ppp: pointer to pointer to _name{}                                 \
+ *  @k:   key                                                           \
+ *  @v:   value                                                         \
+ *                                                                      \
+ * Returns:                                                             \
+ *  @success: 0                                                         \
+ *  @failure: -1 and errno set                                          \
+ */                                                                     \
+static inline int                                                       \
+_name ## _set(struct _name **ppp, _k k, _v v)                           \
+{                                                                       \
+        struct _name *pp = *ppp;                                        \
+        hash_map_size_t hash = _hash(k);                                \
+        hash_map_size_t i = hash & (pp->p_cap - 1);                     \
+        uint8_t tmp_disp = 0;                                           \
+        uint8_t disp = 0;                                               \
+        _k tmp_k = (_k){0};                                             \
+        _v tmp_v = (_v){0};                                             \
+                                                                        \
+        if (unlikely(_name ## _need_to_grow(pp))) {                     \
+                if (_name ## _resize(ppp, pp->p_cap << 1) < 0)          \
+                        return -1;                                      \
+                pp = *ppp;                                              \
+                i = hash & (pp->p_cap - 1);                             \
+        }                                                               \
+                                                                        \
+        for (;;) {                                                      \
+                tmp_disp = pp->p_meta[i];                               \
+                                                                        \
+                if (tmp_disp >= PLD_HASH_MAP_WAS) {                     \
+                        pp->p_key[i] = k;                               \
+                        pp->p_val[i] = v;                               \
+                        pp->p_meta[i] = disp;                           \
+                                                                        \
+                        if (tmp_disp == PLD_HASH_MAP_NEVER)             \
+                                pp->p_len++;                            \
+                        else                                            \
+                                pp->p_was--;                            \
+                                                                        \
+                        return 0;                                       \
+                }                                                       \
+                                                                        \
+                if (_cmp(pp->p_key[i], k) == 0) {                       \
+                        pp->p_val[i] = v;                               \
+                        return 0;                                       \
+                }                                                       \
+                                                                        \
+                if (tmp_disp < disp) {                                  \
+                        tmp_k = pp->p_key[i];                           \
+                        tmp_v = pp->p_val[i];                           \
+                                                                        \
+                        pp->p_key[i] = k;                               \
+                        pp->p_val[i] = v;                               \
+                        pp->p_meta[i] = disp;                           \
+                                                                        \
+                        k = tmp_k;                                      \
+                        v = tmp_v;                                      \
+                        disp = tmp_disp;                                \
+                }                                                       \
+                                                                        \
+                i = (i + 1) & (pp->p_cap - 1);                          \
+                disp++;                                                 \
+                if (disp >= PLD_HASH_MAP_WAS)                           \
+                        return -1;                                      \
+        }                                                               \
 }
 
 #endif /* #ifndef PLD_HASH_MAP_H */
