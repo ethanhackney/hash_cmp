@@ -219,7 +219,7 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
 }                                                                       \
                                                                         \
 /**                                                                     \
- * Test if rehash is needed:                                            \
+ * Test if rehash need to grow:                                         \
  *                                                                      \
  * Arguments:                                                           \
  *  @pp: pointer to _name{}                                             \
@@ -266,7 +266,8 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
                 if (_name ## _resize(ppp, pp->p_cap << 1) < 0)          \
                         return -1;                                      \
                 pp = *ppp;                                              \
-                i = hash & (pp->p_cap - 1);                             \
+                mask = pp->p_cap - 1;                                   \
+                i = hash & mask;                                        \
         }                                                               \
                                                                         \
         for (;;) {                                                      \
@@ -314,8 +315,8 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
  * Get map[k] from _name{}:                                             \
  *                                                                      \
  * Arguments:                                                           \
- *  @ppp: pointer to pointer to _name{}                                 \
- *  @k:   key                                                           \
+ *  @pp: pointer to pointer to _name{}                                  \
+ *  @k:  key                                                            \
  *                                                                      \
  * Returns:                                                             \
  *  @success: pointer to _v{}                                           \
@@ -338,13 +339,85 @@ _name ## _get(struct _name *pp, _k k)                                   \
                 if (cur_disp < disp)                                    \
                         return NULL;                                    \
                                                                         \
-                if (_cmp(pp->p_key[i], k) == 0)                         \
-                        return &pp->p_val[i];                           \
+                if (cur_disp != PLD_HASH_MAP_WAS) {                     \
+                        if (_cmp(pp->p_key[i], k) == 0)                 \
+                                return &pp->p_val[i];                   \
+                }                                                       \
                                                                         \
                 i = (i + 1) & mask;                                     \
                 disp++;                                                 \
                 if (disp >= PLD_HASH_MAP_WAS)                           \
                         return NULL;                                    \
+        }                                                               \
+}                                                                       \
+                                                                        \
+/**                                                                     \
+ * Test if need to shrink:                                              \
+ *                                                                      \
+ * Arguments:                                                           \
+ *  @pp: pointer to _name{}                                             \
+ *                                                                      \
+ * Returns:                                                             \
+ *  @true:  if needed                                                   \
+ *  @false: if not                                                      \
+ */                                                                     \
+static inline bool                                                      \
+_name ## _need_to_shrink(const struct _name *pp)                        \
+{                                                                       \
+        hash_map_size_t len = pp->p_len;                                \
+        hash_map_size_t cap = pp->p_cap;                                \
+                                                                        \
+        return len <= (cap >> 1) && (cap > PLD_HASH_MAP_INIT_CAP);      \
+}                                                                       \
+                                                                        \
+/**                                                                     \
+ * Unset map[k] _name{}:                                                \
+ *                                                                      \
+ * Arguments:                                                           \
+ *  @ppp: pointer to pointer to _name{}                                 \
+ *  @k:   key                                                           \
+ *                                                                      \
+ * Returns:                                                             \
+ *  @success: 0                                                         \
+ *  @failure: -1 and errno set                                          \
+ */                                                                     \
+static inline int                                                       \
+_name ## _unset(struct _name **ppp, _k k)                               \
+{                                                                       \
+        struct _name *pp = *ppp;                                        \
+        hash_map_size_t hash = _hash(k);                                \
+        hash_map_size_t mask = pp->p_cap - 1;                           \
+        hash_map_size_t i = hash & mask;                                \
+        uint8_t cur_disp = 0;                                           \
+        uint8_t disp = 0;                                               \
+                                                                        \
+        if (unlikely(_name ## _need_to_shrink(pp))) {                   \
+                if (_name ## _resize(ppp, pp->p_cap >> 1) < 0)          \
+                        return -1;                                      \
+                pp = *ppp;                                              \
+                mask = pp->p_cap - 1;                                   \
+                i = hash & mask;                                        \
+        }                                                               \
+                                                                        \
+        for (;;) {                                                      \
+                cur_disp = pp->p_meta[i];                               \
+                                                                        \
+                if (cur_disp == PLD_HASH_MAP_NEVER)                     \
+                        return 0;                                       \
+                if (cur_disp < disp)                                    \
+                        return 0;                                       \
+                                                                        \
+                if (_cmp(pp->p_key[i], k) == 0) {                       \
+                        pp->p_meta[i] = PLD_HASH_MAP_WAS;               \
+                        pp->p_len--;                                    \
+                        pp->p_was++;                                    \
+                        return 0;                                       \
+                }                                                       \
+                                                                        \
+                i = (i + 1) & mask;                                     \
+                disp++;                                                 \
+                if (disp >= PLD_HASH_MAP_WAS)                           \
+                        return -1;                                      \
         }                                                               \
 }
 

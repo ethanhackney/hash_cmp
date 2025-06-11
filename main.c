@@ -23,5 +23,12 @@ main(void)
         if (vp != NULL)
                 printf("%d\n", *vp);
 
+        if (int2intmap_unset(&i2imap, 16) < 0)
+                puts("here");
+
+        vp = int2intmap_get(i2imap, 16);
+        if (vp != NULL)
+                printf("%d\n", *vp);
+
         int2intmap_free(&i2imap);
 }
