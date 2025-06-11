@@ -407,11 +407,13 @@ _name ## _unset(struct _name **ppp, _k k)                               \
                 if (cur_disp < disp)                                    \
                         return 0;                                       \
                                                                         \
-                if (_cmp(pp->p_key[i], k) == 0) {                       \
-                        pp->p_meta[i] = PLD_HASH_MAP_WAS;               \
-                        pp->p_len--;                                    \
-                        pp->p_was++;                                    \
-                        return 0;                                       \
+                if (cur_disp != PLD_HASH_MAP_WAS) {                     \
+                        if (_cmp(pp->p_key[i], k) == 0) {               \
+                                pp->p_meta[i] = PLD_HASH_MAP_WAS;       \
+                                pp->p_len--;                            \
+                                pp->p_was++;                            \
+                                return 0;                               \
+                        }                                               \
                 }                                                       \
                                                                         \
                 i = (i + 1) & mask;                                     \
