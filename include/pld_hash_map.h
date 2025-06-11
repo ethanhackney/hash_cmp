@@ -306,7 +306,7 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
                                                                         \
                 i = (i + 1) & mask;                                     \
                 disp++;                                                 \
-                if (disp >= PLD_HASH_MAP_WAS)                           \
+                if (unlikely(disp >= PLD_HASH_MAP_WAS))                 \
                         return -1;                                      \
         }                                                               \
 }                                                                       \
@@ -346,7 +346,7 @@ _name ## _get(struct _name *pp, _k k)                                   \
                                                                         \
                 i = (i + 1) & mask;                                     \
                 disp++;                                                 \
-                if (disp >= PLD_HASH_MAP_WAS)                           \
+                if (unlikely(disp >= PLD_HASH_MAP_WAS))                 \
                         return NULL;                                    \
         }                                                               \
 }                                                                       \
@@ -416,7 +416,7 @@ _name ## _unset(struct _name **ppp, _k k)                               \
                                                                         \
                 i = (i + 1) & mask;                                     \
                 disp++;                                                 \
-                if (disp >= PLD_HASH_MAP_WAS)                           \
+                if (unlikely(disp >= PLD_HASH_MAP_WAS))                 \
                         return -1;                                      \
         }                                                               \
 }
