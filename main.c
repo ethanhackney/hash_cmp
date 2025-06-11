@@ -4,7 +4,7 @@
 #define inthash(_n) ((size_t)(_n))
 #define intcmp(_a, _b) (((_a) > (_b)) - ((_a) < (_b)))
 
-PLD_HASH_MAP_DEFINE(static, int, int, int2intmap, inthash, intcmp)
+PLD_HASH_MAP_DEFINE(int, int, int2intmap, inthash, intcmp)
 
 int
 main(void)
