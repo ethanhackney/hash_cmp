@@ -163,6 +163,7 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
         struct _name *newpp = _name ## _new(cap);                       \
         struct _name *pp = *ppp;                                        \
         hash_map_size_t moved = 0;                                      \
+        hash_map_size_t mask = 0;                                       \
         hash_map_size_t j = 0;                                          \
         hash_map_size_t i = 0;                                          \
         uint8_t tmp_disp = 0;                                           \
@@ -177,6 +178,7 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
                                                                         \
         newpp->p_len = pp->p_len;                                       \
         newpp->p_was = pp->p_was;                                       \
+        mask = newpp->p_cap - 1;                                        \
                                                                         \
         for (i = 0; moved < pp->p_len; i++) {                           \
                 if (pp->p_meta[i] >= PLD_HASH_MAP_WAS)                  \
@@ -185,7 +187,7 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
                 k = pp->p_key[i];                                       \
                 v = pp->p_val[i];                                       \
                 disp = 0;                                               \
-                j = pp->p_hash[i] & (cap - 1);                          \
+                j = pp->p_hash[i] & mask;                               \
                 while (newpp->p_meta[j] != PLD_HASH_MAP_NEVER) {        \
                         if (newpp->p_meta[j] < disp) {                  \
                                 tmp_k = newpp->p_key[j];                \
@@ -200,7 +202,7 @@ _name ## _resize(struct _name **ppp, hash_map_size_t cap)               \
                                 v = tmp_v;                              \
                                 disp = tmp_disp;                        \
                         }                                               \
-                        j = (j + 1) & (cap - 1);                        \
+                        j = (j + 1) & mask;                             \
                         disp++;                                         \
                 }                                                       \
                                                                         \
@@ -253,7 +255,8 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
 {                                                                       \
         struct _name *pp = *ppp;                                        \
         hash_map_size_t hash = _hash(k);                                \
-        hash_map_size_t i = hash & (pp->p_cap - 1);                     \
+        hash_map_size_t mask = pp->p_cap - 1;                           \
+        hash_map_size_t i = hash & mask;                                \
         uint8_t tmp_disp = 0;                                           \
         uint8_t disp = 0;                                               \
         _k tmp_k = (_k){0};                                             \
@@ -300,10 +303,48 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
                         disp = tmp_disp;                                \
                 }                                                       \
                                                                         \
-                i = (i + 1) & (pp->p_cap - 1);                          \
+                i = (i + 1) & mask;                                     \
                 disp++;                                                 \
                 if (disp >= PLD_HASH_MAP_WAS)                           \
                         return -1;                                      \
+        }                                                               \
+}                                                                       \
+                                                                        \
+/**                                                                     \
+ * Get map[k] from _name{}:                                             \
+ *                                                                      \
+ * Arguments:                                                           \
+ *  @ppp: pointer to pointer to _name{}                                 \
+ *  @k:   key                                                           \
+ *                                                                      \
+ * Returns:                                                             \
+ *  @success: pointer to _v{}                                           \
+ *  @failure: NULL                                                      \
+ */                                                                     \
+static inline _v *                                                      \
+_name ## _get(struct _name *pp, _k k)                                   \
+{                                                                       \
+        hash_map_size_t hash = _hash(k);                                \
+        hash_map_size_t mask = pp->p_cap - 1;                           \
+        hash_map_size_t i = hash & mask;                                \
+        uint8_t cur_disp = 0;                                           \
+        uint8_t disp = 0;                                               \
+                                                                        \
+        for (;;) {                                                      \
+                cur_disp = pp->p_meta[i];                               \
+                                                                        \
+                if (cur_disp == PLD_HASH_MAP_NEVER)                     \
+                        return NULL;                                    \
+                if (cur_disp < disp)                                    \
+                        return NULL;                                    \
+                                                                        \
+                if (_cmp(pp->p_key[i], k) == 0)                         \
+                        return &pp->p_val[i];                           \
+                                                                        \
+                i = (i + 1) & mask;                                     \
+                disp++;                                                 \
+                if (disp >= PLD_HASH_MAP_WAS)                           \
+                        return NULL;                                    \
         }                                                               \
 }
 

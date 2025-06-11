@@ -10,6 +10,7 @@ int
 main(void)
 {
         struct int2intmap *i2imap = NULL;
+        int *vp = NULL;
 
         i2imap = int2intmap_new(0);
         if (i2imap == NULL)
@@ -17,6 +18,10 @@ main(void)
 
         if (int2intmap_set(&i2imap, 16, 4) < 0)
                 puts("here");
+
+        vp = int2intmap_get(i2imap, 16);
+        if (vp != NULL)
+                printf("%d\n", *vp);
 
         int2intmap_free(&i2imap);
 }
