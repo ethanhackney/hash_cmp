@@ -1,7 +1,20 @@
 #include "include/pld_hash_map.h"
 #include <stdio.h>
 
-#define inthash(_n) ((size_t)(_n))
+static inline hash_map_size_t
+inthash(int i)
+{
+        hash_map_size_t hash = (hash_map_size_t)i;
+
+        hash ^= hash >> 15;
+        hash ^= hash >> 7;
+        hash ^= hash >> 3;
+        hash ^= hash << 5;
+        hash ^= hash >> 16;
+
+        return hash;
+}
+
 #define intcmp(_a, _b) (((_a) > (_b)) - ((_a) < (_b)))
 
 PLD_HASH_MAP_DEFINE(int, int, int2intmap, inthash, intcmp)
