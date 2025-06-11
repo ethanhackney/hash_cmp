@@ -277,6 +277,7 @@ _name ## _set(struct _name **ppp, _k k, _v v)                           \
                         pp->p_key[i] = k;                               \
                         pp->p_val[i] = v;                               \
                         pp->p_meta[i] = disp;                           \
+                        pp->p_hash[i] = hash;                           \
                                                                         \
                         if (tmp_disp == PLD_HASH_MAP_NEVER)             \
                                 pp->p_len++;                            \
